@@ -1,0 +1,9 @@
+/run
+/rex
+/tasks.todo
+/Makefile
+/main
+/CMakeCache.txt
+/cmake_install.cmake
+CMakeFiles
+.vscode
