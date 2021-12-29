@@ -1,9 +1,9 @@
-/run
-/rex
-/tasks.todo
-/Makefile
-/main
-/CMakeCache.txt
-/cmake_install.cmake
+run
+rex
+tasks.todo
+Makefile
+main
+CMakeCache.txt
+cmake_install.cmake
 CMakeFiles
 .vscode
