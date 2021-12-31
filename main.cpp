@@ -60,23 +60,32 @@ void REX::printUsage() {
 }
 
 REX::REX(char *arguments[], int const &size) {
+  this->start = std::chrono::steady_clock::now();
   this->cur_op = operation();
   this->_parse(arguments, size);
-  this->cur_op.show();
+  // this->cur_op.show();
   this->_register(arguments[1]);
   this->_initiate_operation();
+  this->end = std::chrono::steady_clock::now();
+  cout << "\nThe operation took: " << this->getElapsedTime() << "ms\n";
+}
+
+int REX::getElapsedTime() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(this->end -
+                                                               this->start)
+      .count();
 }
 
 void REX::_parse(char *arguments[], int const &size) {
   string path, target, replacer, rest;
   operation_type op_type;
   operation_scope op_scope;
-  std::unordered_map<std::string, bool> filepaths;
   operation_target op_target;
   vector<pair<string, operation_target>> special_files;
   bool is_target_provided = false;
   for (int i = 1; i < size; i++) {
     string argument(arguments[i]);
+    this->unique_identifier += argument;
     switch (i) {
     case 1: {
       path = argument;
@@ -114,7 +123,9 @@ void REX::_parse(char *arguments[], int const &size) {
         while (utility::getsubstr(resolve, 0, 1) != "--" && i < size) {
           if (arguments[i] == "" || arguments[i] == " ")
             break;
-          filepaths[string(arguments[i++])] = true;
+          this->filepaths[string(arguments[i++])] = true;
+          if (i >= size)
+            break;
           resolve = string(arguments[i]);
         }
         if (filepaths.empty()) {
@@ -147,18 +158,15 @@ void REX::_parse(char *arguments[], int const &size) {
     }
   }
   this->cur_op.reinitialize(path, target, op_type, op_scope, rest, replacer,
-                            filepaths, special_files);
+                            special_files);
 }
 
 void REX::_register(std::string const &filepath) {
   for (auto &file : std::filesystem::recursive_directory_iterator(filepath)) {
     string fpath = file.path();
     string type = utility::getfiletype(fpath);
-    if (!(type.compare("cpp") == 0 || type.compare("txt") == 0 ||
-          type.compare("java") == 0 || type.compare("py") == 0)) {
-      continue;
-    }
-    if (!utility::isfiletypevalid(type))
+    if (!utility::isfiletypevalid(type) || type == "o" || type == "" ||
+        type == "invalid!" || type == ".exe")
       continue;
     this->file_instances.push_back(code_helper(fpath));
   }
@@ -176,22 +184,51 @@ void REX::_initiate_operation() {
 }
 
 void REX::_find() {
+  auto print_results = [&](string const &target) -> void {
+    cout << "Total match found: "
+         << double(double(this->found_results.size()) + 0.0) << "\n";
+    for (auto &result : this->found_results) {
+      cout << "\nfile: " << result.first << ",\n";
+      cout << "At line no. " << result.second.first + 1 << ": "
+           << utility::colorise_occurences(result.second.second, target)
+           << "\n";
+    }
+  };
   switch (this->cur_op.get_operationscope()) {
   case operation_scope::all: {
     const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
-    for (auto &code : this->file_instances) {
-      for (auto result : code.find(target)) {
-        this->found_results.push_back({code.getpath(), result});
+    if (this->cached_results.find(this->unique_identifier) !=
+        this->cached_results
+            .end()) { // This might prove to be a redundant piece of code ;( .
+      this->found_results = this->cached_results[this->unique_identifier];
+    } else {
+      for (auto &code : this->file_instances) {
+        for (auto result : code.find(target)) {
+          this->found_results.push_back({code.getpath(), result});
+        }
       }
     }
-    system("clear");
-    cout << "Total results found: "
-         << double(double(this->found_results.size()) + 0.0) << "\n";
-    for (auto &result : this->found_results) {
-      cout << "\n" << result.first << ",\n";
-      cout << "At line no. " << result.second.first + 1 << ": "
-           << utility::colorise_occurences(result.second.second, target);
+    // system("clear");
+    print_results(target);
+    break;
+  }
+  case operation_scope::some: {
+    const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
+    if (this->cached_results.find(this->unique_identifier) !=
+        this->cached_results
+            .end()) { // This might prove to be a redundant piece of code ;( .
+      this->found_results = this->cached_results[this->unique_identifier];
+    } else {
+      for (auto &code : this->file_instances) {
+        for (auto result : code.find(target)) {
+          if (this->filepaths.find(code.getpath()) != this->filepaths.end()) {
+            this->found_results.push_back({code.getpath(), result});
+          }
+        }
+      }
     }
+    // system("clear");
+    print_results(target);
     break;
   }
   default: {

@@ -42,10 +42,6 @@ public:
     }
     return results;
   }
-  static void merge(std::vector<auto> &vector1, std::vector<auto> &vector2) {
-    for (auto &v : vector2)
-      vector1.push_back(v);
-  }
   static std::string colorise_occurences(std::string const &main,
                                          std::string const &target) {
     string main_ = "", s = "";

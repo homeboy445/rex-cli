@@ -1,4 +1,5 @@
 #include "code_helper.h"
+#include <chrono>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
@@ -14,7 +15,6 @@ class operation {
   std::string replacer;
   operation_scope opscope;
   std::string rest;
-  std::unordered_map<std::string, bool> filepaths;
   vector<pair<string, operation_target>> special_files;
 
 public:
@@ -26,17 +26,13 @@ public:
       std::string const &path, std::string const &target,
       operation_type const &optype, operation_scope const &opscope,
       std::string const rest, std::string const &replacer = "",
-      std::unordered_map<std::string, bool> const filepaths = {},
       vector<pair<string, operation_target>> const &special_files = {}) {
     this->path = path, this->target = target, this->optype = optype,
     this->opscope = opscope, this->rest = rest, this->replacer = replacer,
-    this->filepaths = filepaths, this->special_files = special_files;
+    this->special_files = special_files;
   }
   operation_type const &get_operationtype() { return this->optype; }
   operation_scope const &get_operationscope() { return this->opscope; }
-  std::unordered_map<std::string, bool> const &get_filepaths() {
-    return this->filepaths;
-  };
   std::pair<std::string, std::string> const get_targetAndreplacer() {
     return {this->target, this->replacer};
   }
@@ -60,16 +56,30 @@ public:
 };
 
 class REX {
+  std::string unique_identifier; // This is just basically a concatinated
+                                 // version of the command invoked.
   std::string code;
   std::vector<code_helper> file_instances;
   operation cur_op;
+  std::unordered_map<std::string, bool> filepaths;
 
+  std::unordered_map<
+      std::string,
+      std::vector<std::pair<std::string, std::pair<int, std::string>>>>
+      cached_results; /*This basically is responsible for checking if a command
+                         has been repeated or not, if it has been then return
+                         the cached version, if not, then compute it.*/
   std::vector<std::pair<std::string, std::pair<int, std::string>>>
       found_results;
+
+  // For measuring performance
+  std::chrono::steady_clock::time_point start;
+  std::chrono::steady_clock::time_point end;
 
 public:
   REX(char *arguments[], int const &size = 0);
   static void printUsage();
+  int getElapsedTime();
   void _parse(char *arguments[], int const &size = 0);
   void _register(std::string const &filepath);
   void _initiate_operation();

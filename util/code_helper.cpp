@@ -17,10 +17,8 @@ code_helper::code_helper(string const &path) {
 
 vector<std::pair<int, std::string>>
 code_helper::find(std::string const &target) {
-  cout << " << " << target << " >> \n";
   vector<std::pair<int, std::string>> results;
   for (int i = 0; i < this->code.size(); ++i) {
-    cout << "line number " << i + 1 << " <<\n";
     if (code[i] == "\n" || code[i] == "" || code[i] == " ")
       continue;
     auto index = code[i].find(target);
