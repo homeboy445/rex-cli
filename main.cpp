@@ -63,13 +63,15 @@ REX::REX(char *arguments[], int const &size) {
   this->cur_op = operation();
   this->_parse(arguments, size);
   this->cur_op.show();
+  this->_register(arguments[1]);
+  this->_initiate_operation();
 }
 
 void REX::_parse(char *arguments[], int const &size) {
   string path, target, replacer, rest;
   operation_type op_type;
   operation_scope op_scope;
-  vector<string> filepaths;
+  std::unordered_map<std::string, bool> filepaths;
   operation_target op_target;
   vector<pair<string, operation_target>> special_files;
   bool is_target_provided = false;
@@ -112,7 +114,7 @@ void REX::_parse(char *arguments[], int const &size) {
         while (utility::getsubstr(resolve, 0, 1) != "--" && i < size) {
           if (arguments[i] == "" || arguments[i] == " ")
             break;
-          filepaths.push_back(arguments[i++]);
+          filepaths[string(arguments[i++])] = true;
           resolve = string(arguments[i]);
         }
         if (filepaths.empty()) {
@@ -150,7 +152,57 @@ void REX::_parse(char *arguments[], int const &size) {
 
 void REX::_register(std::string const &filepath) {
   for (auto &file : std::filesystem::recursive_directory_iterator(filepath)) {
-    cout << file.path() << "\n";
+    string fpath = file.path();
+    string type = utility::getfiletype(fpath);
+    if (!(type.compare("cpp") == 0 || type.compare("txt") == 0 ||
+          type.compare("java") == 0 || type.compare("py") == 0)) {
+      continue;
+    }
+    if (!utility::isfiletypevalid(type))
+      continue;
+    this->file_instances.push_back(code_helper(fpath));
+  }
+}
+
+void REX::_initiate_operation() {
+  switch (this->cur_op.get_operationtype()) {
+  case operation_type::find: {
+    this->_find();
+    break;
+  }
+  default:
+    break;
+  }
+}
+
+void REX::_find() {
+  switch (this->cur_op.get_operationscope()) {
+  case operation_scope::all: {
+    const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
+    for (auto &code : this->file_instances) {
+      for (auto result : code.find(target)) {
+        this->found_results.push_back({code.getpath(), result});
+      }
+    }
+    system("clear");
+    cout << " Total results found: "
+         << double(double(this->found_results.size()) + 0.0) << "\n";
+    for (auto &result : this->found_results) {
+      cout << "\n" << result.first << ",\n";
+      string resultant = result.second.second.first;
+      string s = string(resultant.begin(),
+                        resultant.begin() + result.second.second.second),
+             rem = string(resultant.begin() + result.second.second.second +
+                              target.size(),
+                          resultant.end());
+      cout << "At line no. " << result.second.first + 1 << ": " << s
+           << "\033[1;31m" << target << "\033[0m" << rem << "\n";
+    }
+    break;
+  }
+  default: {
+    throw runtime_error("Unknown operation scope!");
+  }
   }
 }
 
@@ -162,7 +214,8 @@ int main(int argc, char *argv[]) {
   try {
     REX instance(argv, argc);
   } catch (std::exception &e) {
-    cout << "ERROR: " << e.what();
+    cout << "\nERROR: " << e.what() << "\n\n";
+    REX::printUsage();
   }
   return cout << "\n", 0;
 }

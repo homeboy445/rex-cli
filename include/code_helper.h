@@ -9,7 +9,10 @@ class code_helper {
 
 public:
   code_helper(std::string const &path);
-  void find();
+  std::string &getpath() { return this->path; }
+  std::vector<std::string> &getcode() { return this->code; }
+  std::vector<std::pair<int, std::pair<std::string, int>>>
+  find(std::string const &target);
   void replace();
   void revert();
 };
