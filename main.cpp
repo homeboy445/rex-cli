@@ -49,15 +49,21 @@ void REX::printUsage() {
   cout
       << "     '--revert' will only work if the files in which the changes via "
          "the replacement operation were made haven't changed.\n\n";
-  //   cout << "\n TIP: \n     Just append '--display' flag at the end of your
-  //   command to display the operation details.\n"     To perform any operation
-  //   on a certain file type, consider using '--include-only' flag, just
-  //       add it as a suffix to the whole command,
-  //       like so : [whole command]-- include -
-  //                 only cpp java py...\n To exclude any file(s)
-  //                     from the operation being performed,
-  //       just add the flag '--except' and the file types,
-  //       like so[whole command]-- except cpp java py... ";
+  cout << "\n TIP: \n     * Just append '--display' flag at the end of your "
+       << "command to display the operation details.\n     * To perform any "
+          "operation "
+       << "on a certain file type, consider using '--include-only' flag, just"
+       << "add it as a suffix to the whole command,"
+       << "like so : [whole command]-- include -"
+       << "only cpp java py...\n     * To exclude any file(s) from the "
+          "operation "
+          "being performed,"
+       << "just add the flag '--except' and the file types, like "
+          "so[whole "
+          "command]-- except cpp java py... \n"
+       << "     * By default the operation scope would be '--all', unless "
+          "specified "
+          "otherwise.\n";
 }
 
 REX::REX(char *arguments[], int const &size) {
@@ -110,6 +116,7 @@ void REX::_parse(char *arguments[], int const &size) {
     }
     case 3: {
       target = argument;
+      op_scope = operation_scope::all;
       break;
     }
     case 4: {
@@ -257,7 +264,7 @@ void REX::_find() {
 }
 
 int main(int argc, char *argv[]) {
-  if (argc < 5) {
+  if (argc < 4) {
     REX::printUsage();
     return 0;
   }
