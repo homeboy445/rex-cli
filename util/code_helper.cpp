@@ -15,10 +15,10 @@ code_helper::code_helper(string const &path) {
   this->code = utility::split(data);
 }
 
-vector<std::pair<int, std::pair<std::string, int>>>
+vector<std::pair<int, std::string>>
 code_helper::find(std::string const &target) {
   cout << " << " << target << " >> \n";
-  vector<std::pair<int, std::pair<std::string, int>>> results;
+  vector<std::pair<int, std::string>> results;
   for (int i = 0; i < this->code.size(); ++i) {
     cout << "line number " << i + 1 << " <<\n";
     if (code[i] == "\n" || code[i] == "" || code[i] == " ")
@@ -26,7 +26,7 @@ code_helper::find(std::string const &target) {
     auto index = code[i].find(target);
     if (index != string::npos) { // TODO: Implement a better algorithm for
                                  // finding substring!
-      results.push_back({i, {code[i], int(index)}});
+      results.push_back({i, code[i]});
     }
   }
   return results;

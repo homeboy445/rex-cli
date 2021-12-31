@@ -46,4 +46,21 @@ public:
     for (auto &v : vector2)
       vector1.push_back(v);
   }
+  static std::string colorise_occurences(std::string const &main,
+                                         std::string const &target) {
+    string main_ = "", s = "";
+    for (int i = 0; i < main.length(); i++) {
+      for (int j = i; j < i + target.length() && j < main.length(); j++) {
+        s.push_back(main[j]);
+      }
+      if (s.compare(target) == 0) {
+        main_ += "\033[1;31m" + target + "\033[0m";
+        i += target.length() - 1;
+      } else {
+        main_.push_back(main[i]);
+      }
+      s.clear();
+    }
+    return main_;
+  }
 };

@@ -64,7 +64,7 @@ class REX {
   std::vector<code_helper> file_instances;
   operation cur_op;
 
-  std::vector<std::pair<std::string, std::pair<int, pair<std::string, int>>>>
+  std::vector<std::pair<std::string, std::pair<int, std::string>>>
       found_results;
 
 public:

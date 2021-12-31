@@ -185,18 +185,12 @@ void REX::_find() {
       }
     }
     system("clear");
-    cout << " Total results found: "
+    cout << "Total results found: "
          << double(double(this->found_results.size()) + 0.0) << "\n";
     for (auto &result : this->found_results) {
       cout << "\n" << result.first << ",\n";
-      string resultant = result.second.second.first;
-      string s = string(resultant.begin(),
-                        resultant.begin() + result.second.second.second),
-             rem = string(resultant.begin() + result.second.second.second +
-                              target.size(),
-                          resultant.end());
-      cout << "At line no. " << result.second.first + 1 << ": " << s
-           << "\033[1;31m" << target << "\033[0m" << rem << "\n";
+      cout << "At line no. " << result.second.first + 1 << ": "
+           << utility::colorise_occurences(result.second.second, target);
     }
     break;
   }
