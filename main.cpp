@@ -41,9 +41,10 @@ void REX::printUsage() {
           "current working directory.\n\n";
   cout << "   --display     flag for displaying the details of the operations "
           "being performed.\n";
-  cout << "   --include-only     flag for only considering certain file "
-          "types.\n";
-  cout << "   --except     flag for excluding certain file types.\n";
+  cout << "   --include-only     flag for only considering certain file"
+          "types(specify file types only without a period).\n";
+  cout << "   --except     flag for excluding certain file types(specify file "
+          "types only without a period).\n";
   cout << "\n\n WARNING: \n";
   cout
       << "     '--revert' will only work if the files in which the changes via "
@@ -88,7 +89,11 @@ void REX::_parse(char *arguments[], int const &size) {
     this->unique_identifier += argument;
     switch (i) {
     case 1: {
-      path = argument;
+      if (argument == ".") {
+        path = utility::getcwd_string();
+      } else {
+        path = argument;
+      }
       break;
     }
     case 2: {
@@ -162,12 +167,26 @@ void REX::_parse(char *arguments[], int const &size) {
 }
 
 void REX::_register(std::string const &filepath) {
+  unordered_map<string, operation_target> inc_ex;
+  bool includeOnly = false;
+  for (auto const &f_type : this->cur_op.get_specialfiles()) {
+    includeOnly |= f_type.second == operation_target::includeOnly;
+    inc_ex[f_type.first] = f_type.second;
+  }
   for (auto &file : std::filesystem::recursive_directory_iterator(filepath)) {
     string fpath = file.path();
     string type = utility::getfiletype(fpath);
     if (!utility::isfiletypevalid(type) || type == "o" || type == "" ||
-        type == "invalid!" || type == ".exe")
+        type == "out" || type == "invalid!" || type == ".exe")
       continue;
+    if (includeOnly) {
+      if (inc_ex.find(type) == inc_ex.end() ||
+          inc_ex[type] != operation_target::includeOnly)
+        continue;
+    } else {
+      if (inc_ex[type] == operation_target::excludeOnly)
+        continue;
+    }
     this->file_instances.push_back(code_helper(fpath));
   }
 }

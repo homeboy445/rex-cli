@@ -21,9 +21,9 @@ code_helper::find(std::string const &target) {
   for (int i = 0; i < this->code.size(); ++i) {
     if (code[i] == "\n" || code[i] == "" || code[i] == " ")
       continue;
-    auto index = code[i].find(target);
-    if (index != string::npos) { // TODO: Implement a better algorithm for
-                                 // finding substring!
+    if (code[i].find(target) !=
+        string::npos) { // TODO: Implement a better algorithm for
+                        // finding substring!
       results.push_back({i, code[i]});
     }
   }

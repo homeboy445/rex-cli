@@ -36,6 +36,9 @@ public:
   std::pair<std::string, std::string> const get_targetAndreplacer() {
     return {this->target, this->replacer};
   }
+  vector<pair<string, operation_target>> const &get_specialfiles() {
+    return this->special_files;
+  }
   void show() { // For debugging purposes only.
     cout << path << '\n'
          << "tar " << target << "\n"
