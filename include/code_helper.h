@@ -11,7 +11,8 @@ public:
   code_helper(std::string const &path);
   std::string &getpath() { return this->path; }
   std::vector<std::string> &getcode() { return this->code; }
-  std::vector<std::pair<int, std::string>> find(std::string const &target);
+  std::vector<std::pair<int, std::string>> find(std::string const &target,
+                                                int const &lines = 0);
   void replace();
   void revert();
 };

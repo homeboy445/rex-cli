@@ -14,6 +14,7 @@ class operation {
   std::string target;
   std::string replacer;
   operation_scope opscope;
+  int lines;
   std::string rest;
   vector<pair<string, operation_target>> special_files;
 
@@ -25,11 +26,12 @@ public:
   void reinitialize(
       std::string const &path, std::string const &target,
       operation_type const &optype, operation_scope const &opscope,
-      std::string const rest, std::string const &replacer = "",
+      int const &lines, std::string const rest,
+      std::string const &replacer = "",
       vector<pair<string, operation_target>> const &special_files = {}) {
     this->path = path, this->target = target, this->optype = optype,
-    this->opscope = opscope, this->rest = rest, this->replacer = replacer,
-    this->special_files = special_files;
+    this->opscope = opscope, this->lines = lines, this->rest = rest,
+    this->replacer = replacer, this->special_files = special_files;
   }
   operation_type const &get_operationtype() { return this->optype; }
   operation_scope const &get_operationscope() { return this->opscope; }
@@ -39,14 +41,16 @@ public:
   vector<pair<string, operation_target>> const &get_specialfiles() {
     return this->special_files;
   }
+  int const &getlines() { return this->lines; };
   void show() { // For debugging purposes only.
     cout << path << '\n'
-         << "tar " << target << "\n"
+         << "target " << target << "\n"
          << "optype " << (optype == operation_type::find ? "find" : "replace")
          << "\n"
          << "opscope " << (opscope == operation_scope::all ? "all" : "some")
          << "\n"
-         << "rep " << replacer << "\n"
+         << "replace_target " << replacer << "\n"
+         << "lines " << lines << "\n"
          << "rest " << rest << "\n";
     cout << "\nspecial files: ";
     for (auto const &p : special_files) {

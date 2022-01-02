@@ -15,8 +15,8 @@ code_helper::code_helper(string const &path) {
   this->code = utility::split(data);
 }
 
-vector<std::pair<int, std::string>>
-code_helper::find(std::string const &target) {
+vector<std::pair<int, std::string>> code_helper::find(std::string const &target,
+                                                      int const &lines) {
   vector<std::pair<int, std::string>> results;
   for (int i = 0; i < this->code.size(); ++i) {
     if (code[i] == "\n" || code[i] == "" || code[i] == " ")
@@ -24,7 +24,20 @@ code_helper::find(std::string const &target) {
     if (code[i].find(target) !=
         string::npos) { // TODO: Implement a better algorithm for
                         // finding substring!
-      results.push_back({i, code[i]});
+      if (lines > 0) {
+        string s = code[i] + '\n';
+        int j = i - 1, lines_ = lines;
+        while (j >= 0 && lines_ > 0) {
+          s = code[j--] + "\n" + s, lines_--;
+        }
+        j = i + 1, lines_ = lines;
+        while (j < code.size() && lines_ > 0) {
+          s += code[j++] + "\n", lines_--;
+        }
+        results.push_back({i, s});
+      } else {
+        results.push_back({i, code[i]});
+      }
     }
   }
   return results;

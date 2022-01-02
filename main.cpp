@@ -41,7 +41,7 @@ void REX::printUsage() {
           "current working directory.\n\n";
   cout << "   --display     flag for displaying the details of the operations "
           "being performed.\n";
-  cout << "   --include-only     flag for only considering certain file"
+  cout << "\n   --include-only     flag for only considering certain file"
           "types(specify file types only without a period).\n";
   cout << "   --except     flag for excluding certain file types(specify file "
           "types only without a period).\n";
@@ -63,7 +63,7 @@ void REX::printUsage() {
           "command]-- except cpp java py... \n"
        << "     * By default the operation scope would be '--all', unless "
           "specified "
-          "otherwise.\n";
+          "otherwise.\n\n";
 }
 
 REX::REX(char *arguments[], int const &size) {
@@ -88,6 +88,7 @@ void REX::_parse(char *arguments[], int const &size) {
   operation_type op_type;
   operation_scope op_scope;
   operation_target op_target;
+  int lines = 0;
   vector<pair<string, operation_target>> special_files;
   bool is_target_provided = false;
   for (int i = 1; i < size; i++) {
@@ -125,6 +126,10 @@ void REX::_parse(char *arguments[], int const &size) {
       } else if (argument == "--some") {
         op_scope = operation_scope::some;
       } else {
+        if (op_scope == operation_scope::all && argument == "--include-only" ||
+            argument == "--except" || argument == "--lines") {
+          goto default_;
+        }
         throw runtime_error("Unknown operation scope: " + string(argument));
       }
       break;
@@ -148,9 +153,14 @@ void REX::_parse(char *arguments[], int const &size) {
       }
     }
     default: {
+    default_:
+      if (argument == "--lines") {
+        lines = atoi(arguments[++i]);
+        break;
+      }
       if (is_target_provided) {
         special_files.push_back({argument, op_target});
-        continue;
+        break;
       }
       if (argument == "--include-only") {
         op_target = operation_target::includeOnly;
@@ -169,8 +179,8 @@ void REX::_parse(char *arguments[], int const &size) {
       throw runtime_error("Missing files");
     }
   }
-  this->cur_op.reinitialize(path, target, op_type, op_scope, rest, replacer,
-                            special_files);
+  this->cur_op.reinitialize(path, target, op_type, op_scope, lines, rest,
+                            replacer, special_files);
 }
 
 void REX::_register(std::string const &filepath) {
@@ -214,10 +224,21 @@ void REX::_find() {
     cout << "Total match found: "
          << double(double(this->found_results.size()) + 0.0) << "\n";
     for (auto &result : this->found_results) {
+      cout << (this->cur_op.getlines() == 0 ? "" : "\n -----\n");
       cout << "\nfile: " << result.first << ",\n";
-      cout << "At line no. " << result.second.first + 1 << ": "
-           << utility::colorise_occurences(result.second.second, target)
-           << "\n";
+      vector<string> results_ = utility::split(result.second.second + '\n');
+      for (int i = 0; i < results_.size(); i++) {
+        if (i == this->cur_op.getlines()) {
+          cout << "At line no. " << result.second.first + 1
+               << ": " // TODO: You could add another option to avoid colorising
+                       // the results, which might lead to performance being
+                       // optimized.
+               << utility::colorise_occurences(results_[i], target) << "\n";
+        } else {
+          cout << "                " << results_[i] << "\n";
+        }
+      }
+      cout << (this->cur_op.getlines() == 0 ? "" : "\n xxxxx \n");
     }
   };
   switch (this->cur_op.get_operationscope()) {
@@ -229,7 +250,7 @@ void REX::_find() {
       this->found_results = this->cached_results[this->unique_identifier];
     } else {
       for (auto &code : this->file_instances) {
-        for (auto result : code.find(target)) {
+        for (auto result : code.find(target, this->cur_op.getlines())) {
           this->found_results.push_back({code.getpath(), result});
         }
       }
