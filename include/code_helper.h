@@ -6,6 +6,7 @@
 class code_helper {
   std::string path;
   std::vector<std::string> code;
+  void save();
 
 public:
   code_helper(std::string const &path);
@@ -13,6 +14,7 @@ public:
   std::vector<std::string> &getcode() { return this->code; }
   std::vector<std::pair<int, std::string>> find(std::string const &target,
                                                 int const &lines = 0);
-  void replace();
+  vector<pair<int, pair<string, string>>> replace(std::string const &target,
+                                                  std::string const &replacer);
   void revert();
 };

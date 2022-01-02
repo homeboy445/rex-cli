@@ -1,8 +1,13 @@
+#include <chrono>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <unistd.h>
 #include <vector>
 
 using namespace std;
+using namespace std::filesystem;
 
 class utility {
 public:
@@ -58,5 +63,27 @@ public:
       s.clear();
     }
     return main_;
+  }
+  static void save_log(std::string const &data, std::string const &target,
+                       std::string const &replacer) {
+    auto now = std::chrono::system_clock::now();
+    auto now_ = std::chrono::system_clock::to_time_t(now);
+    string f_name = ctime(&now_);
+    for (auto &ch : f_name) {
+      if (ch == ' ')
+        ch = '_';
+    }
+    path f1(f_name);
+    path f2(utility::getcwd_string());
+    path k = f2 / f1;
+    f_name = k;
+    f_name.back() = "";
+    f_name += "_" + target + "_" + replacer + ".log";
+    ofstream file(f_name);
+    file << data;
+    file.close();
+    cout
+        << "The data has been successfully stored in the log file at location: "
+        << f_name << " \n";
   }
 };

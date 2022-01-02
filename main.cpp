@@ -91,10 +91,10 @@ void REX::_parse(char *arguments[], int const &size) {
   int lines = 0;
   vector<pair<string, operation_target>> special_files;
   bool is_target_provided = false;
-  for (int i = 1; i < size; i++) {
+  for (int i = 1, case_ = 1; i < size; i++, case_++) {
     string argument(arguments[i]);
     this->unique_identifier += argument;
-    switch (i) {
+    switch (case_) {
     case 1: {
       if (argument == ".") {
         path = utility::getcwd_string();
@@ -117,6 +117,12 @@ void REX::_parse(char *arguments[], int const &size) {
     }
     case 3: {
       target = argument;
+      if (op_type == operation_type::replace) {
+        if (i + 1 >= size)
+          throw runtime_error(
+              "Replacer target not found! [error while parsing arguments]");
+        replacer = string(arguments[++i]);
+      }
       op_scope = operation_scope::all;
       break;
     }
@@ -130,7 +136,8 @@ void REX::_parse(char *arguments[], int const &size) {
             argument == "--except" || argument == "--lines") {
           goto default_;
         }
-        throw runtime_error("Unknown operation scope: " + string(argument));
+        throw runtime_error("Unknown operation scope: " + argument +
+                            " [error while parsing arguments]");
       }
       break;
     }
@@ -146,7 +153,7 @@ void REX::_parse(char *arguments[], int const &size) {
           resolve = string(arguments[i]);
         }
         if (filepaths.empty()) {
-          throw runtime_error("Missing files");
+          throw runtime_error("Missing files! [error while parsing arguments]");
         }
         i--;
         break;
@@ -176,7 +183,7 @@ void REX::_parse(char *arguments[], int const &size) {
   }
   if (op_scope == operation_scope::some) {
     if (filepaths.empty()) {
-      throw runtime_error("Missing files");
+      throw runtime_error("Missing files! [error while parsing arguments]");
     }
   }
   this->cur_op.reinitialize(path, target, op_type, op_scope, lines, rest,
@@ -214,12 +221,18 @@ void REX::_initiate_operation() {
     this->_find();
     break;
   }
+  case operation_type::replace: {
+    this->_replace();
+    break;
+  }
   default:
     break;
   }
 }
 
-void REX::_find() {
+void REX::_find() { // TODO: Consider using threads to make this cli a
+                    // non-blocking one.
+  const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
   auto print_results = [&](string const &target) -> void {
     cout << "Total match found: "
          << double(double(this->found_results.size()) + 0.0) << "\n";
@@ -230,9 +243,9 @@ void REX::_find() {
       for (int i = 0; i < results_.size(); i++) {
         if (i == this->cur_op.getlines()) {
           cout << "At line no. " << result.second.first + 1
-               << ": " // TODO: You could add another option to avoid colorising
-                       // the results, which might lead to performance being
-                       // optimized.
+               << ": " /* TODO: You could add another option to avoid colorising
+                      the results, which might lead to performance being
+                      optimized. */
                << utility::colorise_occurences(results_[i], target) << "\n";
         } else {
           cout << "                " << results_[i] << "\n";
@@ -243,7 +256,6 @@ void REX::_find() {
   };
   switch (this->cur_op.get_operationscope()) {
   case operation_scope::all: {
-    const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
     if (this->cached_results.find(this->unique_identifier) !=
         this->cached_results
             .end()) { // This might prove to be a redundant piece of code ;( .
@@ -260,7 +272,6 @@ void REX::_find() {
     break;
   }
   case operation_scope::some: {
-    const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
     if (this->cached_results.find(this->unique_identifier) !=
         this->cached_results
             .end()) { // This might prove to be a redundant piece of code ;( .
@@ -270,7 +281,8 @@ void REX::_find() {
         for (auto result : code.find(target)) {
           if (this->filepaths.find(code.getpath()) != this->filepaths.end()) {
             this->found_results.push_back({code.getpath(), result});
-          }
+          } // TODO: Shorten this code, take inspiration from the below code for
+            // replace method ;D.
         }
       }
     }
@@ -282,6 +294,48 @@ void REX::_find() {
     throw runtime_error("Unknown operation scope!");
   }
   }
+}
+
+void REX::_replace() {
+  const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
+  vector<pair<string, pair<int, pair<string, string>>>> results_;
+  if (target == replacer) {
+    cout << "target and replacer are same... Haulting execution...!\n";
+    exit(0);
+  }
+  auto print_results = [&]() {
+    string log_data;
+    cout << "Total results found: " << results_.size() << "\n";
+    log_data += "Total results found: " + to_string(results_.size()) + "\n";
+    for (auto const &result_ : results_) {
+      cout << "file: " << result_.first << ", At line no. "
+           << result_.second.first << ",\n";
+      log_data += "file: " + result_.first + ", At line no. " +
+                  to_string(result_.second.first) + ",\n";
+      cout << "From: "
+           << utility::colorise_occurences(result_.second.second.first, target)
+           << "\n";
+      cout << "To: "
+           << utility::colorise_occurences(result_.second.second.second,
+                                           replacer)
+           << "\n\n";
+      log_data += "From: " + result_.second.second.first + "\n";
+      log_data += "To: " + result_.second.second.second + "\n\n";
+    }
+    if (!results_.empty()) {
+      utility::save_log(log_data, target, replacer);
+    }
+  };
+  for (auto &code : this->file_instances) {
+    for (auto const &result : code.replace(target, replacer)) {
+      if ((this->filepaths.find(code.getpath()) != this->filepaths.end() &&
+           this->cur_op.get_operationscope() == operation_scope::some) ||
+          this->cur_op.get_operationscope() == operation_scope::all) {
+        results_.push_back({code.getpath(), result});
+      }
+    }
+  }
+  print_results();
 }
 
 int main(int argc, char *argv[]) {
