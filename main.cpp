@@ -2,6 +2,28 @@
 #include <filesystem>
 
 using namespace std;
+namespace util {
+class console_ {
+public:
+  /**
+   * @brief A multi-argument accepting method which act's as JavaScript's
+   * console.log function.
+   *
+   * @tparam Args
+   * @param args
+   */
+  template <class... Args> void log(Args... args) {
+    (std::cout << ... << args) << "\n";
+  }
+};
+console_ console;
+unordered_map<string, bool> _keywords_ = {
+    {"--all", true},    {"--include-only", true}, {"--some", true},
+    {"--except", true}, {"--find", true},         {"--replace", true},
+    {"--skip", true},   {"--revert", true}};
+}; // namespace util
+using namespace util;
+
 void REX::printUsage() {
   char esc_char = 27;
   cout << "\n"
@@ -28,20 +50,20 @@ void REX::printUsage() {
   cout << "  - For reverting the changes made by the replace operation: \n";
   cout << "       => rex [directory path('.' or 'full path')] --revert [unique "
           "code appended after '.' in the log file] \n\n";
-  cout << "\n Terminologies: \n";
+  cout << "\n Terminologies(actual precedence order): \n";
   cout << "   --find      operation specification flag, used to find code "
           "snippets in the current working directory. \n";
   cout << "   --replace   operation specification flag, used to replace code "
           "snippets with the provided ones in the current working directory.\n";
   cout << "   --revert    operation specification flag, used to revert the "
           "changes made by the replacement operation.\n";
+  cout << "   --list     if multiple words are to be found, present this flag "
+          "and pass the keywords in a listing fashing.\n";
   cout << "   --all       flag for considering every file in the current "
           "working directory.\n";
   cout << "   --some      flag for considering some selected few files in the "
-          "current working directory.\n\n";
-  cout << "   --display     flag for displaying the details of the operations "
-          "being performed.\n";
-  cout << "\n   --include-only     flag for only considering certain file"
+          "current working directory.\n";
+  cout << "   --include-only     flag for only considering certain file"
           "types(specify file types only without a period).\n";
   cout << "   --except     flag for excluding certain file types(specify file "
           "types only without a period).\n";
@@ -91,6 +113,12 @@ void REX::_parse(char *arguments[], int const &size) {
   int lines = 0;
   vector<pair<string, operation_target>> special_files;
   bool is_target_provided = false;
+  if (string(arguments[1]).compare("--revert") == 0) {
+    op_type = operation_type::revert;
+    op_scope = operation_scope::all;
+    target = arguments[2];
+    goto done;
+  }
   for (int i = 1, case_ = 1; i < size; i++, case_++) {
     string argument(arguments[i]);
     this->unique_identifier += argument;
@@ -108,22 +136,34 @@ void REX::_parse(char *arguments[], int const &size) {
         op_type = operation_type::find;
       } else if (argument == "--replace") {
         op_type = operation_type::replace;
-      } else if (argument == "--revert") {
-        op_type = operation_type::revert;
       } else {
         throw runtime_error("Unknown operation type: " + string(argument));
       }
       break;
     }
     case 3: {
+      if (argument == "--list") { // Add support for this...
+        throw runtime_error("Currently not supported!");
+        int j = i + 1;
+        console.log(argument);
+        while (j < size && util::_keywords_.find(string(arguments[j])) ==
+                               util::_keywords_.end()) {
+          console.log(arguments[j++], " <<");
+          target += string(arguments[j++]) + '\n';
+        }
+        console.log("--> ", target);
+        i = j - 1;
+        op_scope = operation_scope::all;
+        break;
+      }
       target = argument;
+      op_scope = operation_scope::all;
       if (op_type == operation_type::replace) {
         if (i + 1 >= size)
           throw runtime_error(
               "Replacer target not found! [error while parsing arguments]");
         replacer = string(arguments[++i]);
       }
-      op_scope = operation_scope::all;
       break;
     }
     case 4: {
@@ -181,6 +221,7 @@ void REX::_parse(char *arguments[], int const &size) {
     }
     }
   }
+done:
   if (op_scope == operation_scope::some) {
     if (filepaths.empty()) {
       throw runtime_error("Missing files! [error while parsing arguments]");
@@ -191,6 +232,9 @@ void REX::_parse(char *arguments[], int const &size) {
 }
 
 void REX::_register(std::string const &filepath) {
+  if (this->cur_op.get_operationtype() == operation_type::revert) {
+    return;
+  }
   unordered_map<string, operation_target> inc_ex;
   bool includeOnly = false;
   for (auto const &f_type : this->cur_op.get_specialfiles()) {
@@ -225,6 +269,10 @@ void REX::_initiate_operation() {
     this->_replace();
     break;
   }
+  case operation_type::revert: {
+    this->_revert();
+    break;
+  }
   default:
     break;
   }
@@ -256,15 +304,9 @@ void REX::_find() { // TODO: Consider using threads to make this cli a
   };
   switch (this->cur_op.get_operationscope()) {
   case operation_scope::all: {
-    if (this->cached_results.find(this->unique_identifier) !=
-        this->cached_results
-            .end()) { // This might prove to be a redundant piece of code ;( .
-      this->found_results = this->cached_results[this->unique_identifier];
-    } else {
-      for (auto &code : this->file_instances) {
-        for (auto result : code.find(target, this->cur_op.getlines())) {
-          this->found_results.push_back({code.getpath(), result});
-        }
+    for (auto &code : this->file_instances) {
+      for (auto result : code.find(target, this->cur_op.getlines())) {
+        this->found_results.push_back({code.getpath(), result});
       }
     }
     // system("clear");
@@ -272,18 +314,12 @@ void REX::_find() { // TODO: Consider using threads to make this cli a
     break;
   }
   case operation_scope::some: {
-    if (this->cached_results.find(this->unique_identifier) !=
-        this->cached_results
-            .end()) { // This might prove to be a redundant piece of code ;( .
-      this->found_results = this->cached_results[this->unique_identifier];
-    } else {
-      for (auto &code : this->file_instances) {
-        for (auto result : code.find(target)) {
-          if (this->filepaths.find(code.getpath()) != this->filepaths.end()) {
-            this->found_results.push_back({code.getpath(), result});
-          } // TODO: Shorten this code, take inspiration from the below code for
-            // replace method ;D.
-        }
+    for (auto &code : this->file_instances) {
+      for (auto result : code.find(target)) {
+        if (this->filepaths.find(code.getpath()) != this->filepaths.end()) {
+          this->found_results.push_back({code.getpath(), result});
+        } // TODO: Shorten this code, take inspiration from the below code for
+          // replace method ;D.
       }
     }
     // system("clear");
@@ -320,7 +356,7 @@ void REX::_replace() {
                                            replacer)
            << "\n\n";
       log_data += "From: " + result_.second.second.first + "\n";
-      log_data += "To: " + result_.second.second.second + "\n\n";
+      log_data += "To: " + result_.second.second.second + "\n###\n";
     }
     if (!results_.empty()) {
       utility::save_log(log_data, target, replacer);
@@ -338,8 +374,73 @@ void REX::_replace() {
   print_results();
 }
 
+void REX::_revert() {
+  unordered_map<string, vector<pair<string, string>>> files_;
+  code_helper logFile(this->cur_op.get_targetAndreplacer().first);
+  string prev;
+  for (auto const &code : logFile.getcode()) {
+    if (code.compare("###") == 0) {
+      continue;
+    }
+    size_t index = code.find_first_of(':');
+    string s = code;
+    if (index != -1) {
+      s[index] = '\n';
+    }
+    auto code_ = utility::split(s + '\n');
+    if (code_[0] == "file") {
+      string file = utility::split(code_[1], ',')[0];
+      utility::trim(file);
+      files_[file].push_back({"", ""});
+      prev = file;
+    } else if (code_[0] == "From") {
+      files_[prev].back().first = code_[1];
+    } else if (code_[0] == "To") {
+      files_[prev].back().second = code_[1];
+    } else {
+      prev = "*";
+    }
+  }
+  for (auto &file : files_) {
+    string f_name = file.first;
+    if (f_name[0] == '.') {
+      f_name =
+          utility::getcwd_string() + string(f_name.begin() + 1, f_name.end());
+    }
+    code_helper code_file(f_name);
+    for (; !file.second.empty(); file.second.pop_back()) {
+      string tar = file.second.back().second, rep = file.second.back().first;
+      utility::trim(tar);
+      utility::trim(rep);
+      // cin.get();
+      for (auto &code : code_file.getcode()) {
+        size_t indx = code.find(tar);
+        while (indx != string::npos) {
+          string s;
+          for (int i = 0; i < code.length(); i++) {
+            if (i == indx) {
+              s += rep, i += tar.length() - 1;
+            } else {
+              s.push_back(code[i]);
+            }
+          }
+          code = s;
+          // cin.get();
+          indx = code.find(tar); // To make sure not even an instance of the
+                                 // target is left...
+        }
+        // cin.get();
+      }
+    }
+    code_file.revert();
+  }
+  remove(this->cur_op.get_targetAndreplacer()
+             .first); // Removing the logFile so, that it could not be used any
+                      // further...
+}
+
 int main(int argc, char *argv[]) {
-  if (argc < 4) {
+  if (argc < 3) {
     REX::printUsage();
     return 0;
   }

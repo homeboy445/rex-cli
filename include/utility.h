@@ -26,6 +26,17 @@ public:
       return "invalid!";
     return getsubstr(file, x + 1, file.length());
   }
+  static void trim(std::string &target) {
+    std::string s;
+    int start = 0, end = target.length() - 1;
+    while (target[start++] == ' ' && start < target.length())
+      ;
+    while (target[end--] == ' ' && end >= 0)
+      ;
+    for (int i = start - 1; i <= end + 1; s.push_back(target[i++]))
+      ;
+    target = s;
+  }
   static bool isfiletypevalid(std::string const &type) {
     for (auto const &t : type) {
       if (!isalpha(t))
@@ -33,6 +44,14 @@ public:
     }
     return true;
   }
+  /**
+   * @brief A utility method for spliting the code with respect to a specified
+   * seperator(which is '\n' by default.) and returning a vector of strings.
+   *
+   * @param target
+   * @param seperator
+   * @return std::vector of std::string
+   */
   static std::vector<std::string> split(std::string const &target,
                                         char const &seperator = '\n') {
     std::string cur_code = "";
@@ -50,6 +69,10 @@ public:
   static std::string colorise_occurences(std::string const &main,
                                          std::string const &target) {
     string main_ = "", s = "";
+    if (target.find('\n') !=
+        std::string::npos) { // Add support for multiword coloring...
+      return main;
+    }
     for (int i = 0; i < main.length(); i++) {
       for (int j = i; j < i + target.length() && j < main.length(); j++) {
         s.push_back(main[j]);
@@ -77,8 +100,8 @@ public:
     path f2(utility::getcwd_string());
     path k = f2 / f1;
     f_name = k;
-    f_name.back() = "";
-    f_name += "_" + target + "_" + replacer + ".log";
+    f_name.back() = '_';
+    f_name += target + "_" + replacer + ".log";
     ofstream file(f_name);
     file << data;
     file.close();
