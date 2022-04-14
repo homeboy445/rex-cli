@@ -33,6 +33,7 @@ public:
     this->opscope = opscope, this->lines = lines, this->rest = rest,
     this->replacer = replacer, this->special_files = special_files;
   }
+  string const &getFilePath() { return this->path; }
   operation_type const &get_operationtype() { return this->optype; }
   operation_scope const &get_operationscope() { return this->opscope; }
   std::pair<std::string, std::string> const get_targetAndreplacer() {
@@ -59,6 +60,7 @@ public:
                                                          : "excludeOnly")
            << " ] ";
     }
+    cout << "\n";
   }
 };
 

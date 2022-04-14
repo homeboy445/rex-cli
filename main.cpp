@@ -92,8 +92,7 @@ REX::REX(char *arguments[], int const &size) {
   this->start = std::chrono::steady_clock::now();
   this->cur_op = operation();
   this->_parse(arguments, size);
-  // this->cur_op.show();
-  this->_register(arguments[1]);
+  this->_register(this->cur_op.getFilePath());
   this->_initiate_operation();
   this->end = std::chrono::steady_clock::now();
   cout << "\nThe operation took: " << this->getElapsedTime() << "ms\n";
@@ -123,7 +122,7 @@ void REX::_parse(char *arguments[], int const &size) {
     string argument(arguments[i]);
     this->unique_identifier += argument;
     switch (case_) {
-    case 1: {
+    case 1: { // TODO: THIS IS REDUNDANT... REMOVE IT...
       if (argument == ".") {
         path = utility::getcwd_string();
       } else {
@@ -145,13 +144,10 @@ void REX::_parse(char *arguments[], int const &size) {
       if (argument == "--list") { // Add support for this...
         throw runtime_error("Currently not supported!");
         int j = i + 1;
-        console.log(argument);
         while (j < size && util::_keywords_.find(string(arguments[j])) ==
                                util::_keywords_.end()) {
-          console.log(arguments[j++], " <<");
           target += string(arguments[j++]) + '\n';
         }
-        console.log("--> ", target);
         i = j - 1;
         op_scope = operation_scope::all;
         break;
@@ -187,7 +183,8 @@ void REX::_parse(char *arguments[], int const &size) {
         while (utility::getsubstr(resolve, 0, 1) != "--" && i < size) {
           if (arguments[i] == "" || arguments[i] == " ")
             break;
-          this->filepaths[string(arguments[i++])] = true;
+          this->filepaths[utility::validate_path(string(arguments[i++]))] =
+              true;
           if (i >= size)
             break;
           resolve = string(arguments[i]);
@@ -235,25 +232,32 @@ void REX::_register(std::string const &filepath) {
   if (this->cur_op.get_operationtype() == operation_type::revert) {
     return;
   }
-  unordered_map<string, operation_target> inc_ex;
+  unordered_map<string, operation_target> targetFiles;
   bool includeOnly = false;
   for (auto const &f_type : this->cur_op.get_specialfiles()) {
     includeOnly |= f_type.second == operation_target::includeOnly;
-    inc_ex[f_type.first] = f_type.second;
+    targetFiles[f_type.first] = f_type.second;
+  }
+  if (filepath.compare(".") == 0) {
+    throw runtime_error("Error invalid file path!");
+    return;
   }
   for (auto &file : std::filesystem::recursive_directory_iterator(filepath)) {
     string fpath = file.path();
     string type = utility::getfiletype(fpath);
-    if (!utility::isfiletypevalid(type) || type == "o" || type == "" ||
-        type == "out" || type == "invalid!" || type == ".exe")
+    if (!(type == "cpp" || type == "c" || type == "java" || type == "py" ||
+          type == "txt")) { // FIXME: Extend the file types...!
       continue;
+    }
     if (includeOnly) {
-      if (inc_ex.find(type) == inc_ex.end() ||
-          inc_ex[type] != operation_target::includeOnly)
+      if (targetFiles.find(type) == targetFiles.end() ||
+          targetFiles[type] != operation_target::includeOnly) {
         continue;
+      }
     } else {
-      if (inc_ex[type] == operation_target::excludeOnly)
+      if (targetFiles[type] == operation_target::excludeOnly) {
         continue;
+      }
     }
     this->file_instances.push_back(code_helper(fpath));
   }
@@ -440,6 +444,7 @@ void REX::_revert() {
 }
 
 int main(int argc, char *argv[]) {
+  cout << utility::getcwd_string() << " \n";
   if (argc < 3) {
     REX::printUsage();
     return 0;

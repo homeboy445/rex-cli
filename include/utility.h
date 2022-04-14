@@ -17,6 +17,12 @@ public:
     std::string cwd(buff);
     return cwd;
   }
+  static std::string validate_path(std::string const &path) {
+    if (path[0] != '.') {
+      return path;
+    }
+    return getcwd_string() + path.substr(1, path.length() - 1);
+  }
   static std::string getsubstr(std::string const &target, int start, int end) {
     return std::string(target.begin() + start, target.begin() + end);
   }
@@ -105,8 +111,8 @@ public:
     ofstream file(f_name);
     file << data;
     file.close();
-    cout
-        << "The data has been successfully stored in the log file at location: "
-        << f_name << " \n";
+    cout << "The data has been successfully stored in the log file at "
+            "location(please don't tamper with it): "
+         << f_name << " \n";
   }
 };
