@@ -5,7 +5,7 @@
 ## Operations
 - **Find**: Ideal for finding/locating any word or sentence within a certain directory. This operation can be invoked like so, <br />
 `./rex "directory path" --find "something"`
-- **Replace**: Ideal for replacing any word with any other word withing a certain directory. This operation can be invoked like so, <br />
+- **Replace**: Ideal for replacing any word with any other word withing a certain directory, the log would be stored in pwd. This operation can be invoked like so, <br />
 `./rex "directory path" --replace "word-to-be-replace" "word-to-be-replaced-with"`
 
 ## Operation Scopes
@@ -49,5 +49,14 @@
      * To exclude any file(s) from the operation being performed,just add the flag '--except' and the file types, like so: [whole command] --except cpp java py... 
      * By default the operation scope would be '--all', unless specified otherwise.
 ```
+## REX In Action
+
+![Screenshot from 2022-04-18 20-06-07](https://user-images.githubusercontent.com/61937872/163824383-9c938d38-851f-43bd-920d-58059b3826df.png)
+
+<br />
+
+![Screenshot from 2022-04-18 20-07-19](https://user-images.githubusercontent.com/61937872/163824413-21ca7fba-ae14-4519-836e-18f9acbe18b8.png)
+
+
 
 
