@@ -1,6 +1,6 @@
 # rex-cli
 
-#### This cli is a code maneouvering tool that can be used to find words or sentences within a certain code-base easily(much like grep) with a easy to use interface and settings. The results are dispalyed in a descriptive manner and also are being stored for future references.
+#### This cli is a code maneuvering tool that can be used to find words or sentences within a certain code-base easily(much like grep) with a easy to use interface and settings. The results are dispalyed in a descriptive manner and also are being stored for future references.
 
 ## Operations
 - **Find**: Ideal for finding/locating any word or sentence within a certain directory. This operation can be invoked like so, <br />
