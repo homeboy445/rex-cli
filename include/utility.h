@@ -35,9 +35,9 @@ public:
   static void trim(std::string &target) {
     std::string s;
     int start = 0, end = target.length() - 1;
-    while (target[start++] == ' ' && start < target.length())
+    while (start < target.length() && target[start++] == ' ')
       ;
-    while (target[end--] == ' ' && end >= 0)
+    while (end >= 0 && target[end--] == ' ')
       ;
     for (int i = start - 1; i <= end + 1; s.push_back(target[i++]))
       ;
@@ -94,7 +94,8 @@ public:
     return main_;
   }
   static void save_log(std::string const &data, std::string const &target,
-                       std::string const &replacer) {
+                       std::string const &replacer,
+                       std::string const logLocation = "") {
     auto now = std::chrono::system_clock::now();
     auto now_ = std::chrono::system_clock::to_time_t(now);
     string f_name = ctime(&now_);

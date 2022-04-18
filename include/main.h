@@ -19,6 +19,7 @@ class operation {
   vector<pair<string, operation_target>> special_files;
 
 public:
+  std::string logFilePath;
   operation(){};
   operation(std::string &p, std::string &tar, operation_type &o1,
             operation_scope &o2, std::string rt)
@@ -69,7 +70,7 @@ class REX {
                                  // version of the command invoked.
   std::string code;
   std::vector<code_helper> file_instances;
-  operation cur_op;
+  operation currentOperation;
   std::unordered_map<std::string, bool> filepaths;
 
   std::unordered_map<
@@ -87,12 +88,13 @@ class REX {
 
 public:
   REX(char *arguments[], int const &size = 0);
+  void run();
   static void printUsage();
   int getElapsedTime();
-  void _parse(char *arguments[], int const &size = 0);
+  void parse(char *arguments[], int const &size = 0);
   void _register(std::string const &filepath);
-  void _initiate_operation();
-  void _find();
-  void _replace();
-  void _revert();
+  void initiateOperation();
+  void find();
+  void replace();
+  void revert();
 };

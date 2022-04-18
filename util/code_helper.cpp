@@ -43,14 +43,14 @@ vector<std::pair<int, std::string>> code_helper::find(std::string const &target,
   vector<std::pair<int, std::string>> results;
   auto find_tar_multiline = [&](string const &source,
                                 string const &target_code) -> bool {
-    int find = 0;
+    int found = 0;
     vector<string> candidates = utility::split(target_code);
     for (auto const &candidate : utility::split(target_code)) {
       if (source.find(candidate) != std::string::npos) {
-        find++;
+        found++;
       }
     }
-    return find ==
+    return found ==
            int(candidates.size()); // Ensure that everything has been found...!
   };
   for (int i = 0; i < this->code.size(); ++i) {

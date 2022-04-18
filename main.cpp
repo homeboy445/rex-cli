@@ -3,6 +3,12 @@
 
 using namespace std;
 namespace util {
+void promptLogPathLocation(operation &curOp) {
+  cout << "Location for saving operation log file(default location would the "
+          "pwd): ";
+  cin >> curOp.logFilePath;
+  cout << "\n";
+}
 class console_ {
 public:
   /**
@@ -18,7 +24,7 @@ public:
 };
 console_ console;
 unordered_map<string, bool> _keywords_ = {
-    {"--all", true},    {"--include-only", true}, {"--some", true},
+    {"--some", true},   {"--include-only", true}, {"--some", true},
     {"--except", true}, {"--find", true},         {"--replace", true},
     {"--skip", true},   {"--revert", true}};
 }; // namespace util
@@ -32,68 +38,69 @@ void REX::printUsage() {
        << "[0m"
        << "\n\n";
   cout << " Functionalities offered: \n";
-  cout << "  - Find all the occurrences of a certain word or a sentence in the "
-          "selected codebase. \n";
-  cout << "  - Replace all the occurrences of a certain word or a sentence in "
+  cout
+      << "  - Find some the occurrences of a certain word or a sentence in the "
+         "selected codebase. \n";
+  cout << "  - Replace some the occurrences of a certain word or a sentence in "
           "the selected codebase by a something else. \n";
-  cout << "  - Revert the replacement changes done. \n";
   cout << "\n Usage: \n";
-  cout << "  - For finding all/some occurrences: \n";
+  cout << "  - For finding some/some occurrences: \n";
   cout << "       => rex [directory path('.' or 'full path')] --find [word or "
-          "sentence] --all(for the whole directory)/--some [filePath1] "
+          "sentence] --some(for the whole directory)/--some [filePath1] "
           "[filePath2] ... \n\n";
-  cout << "  - For replacing all/some occurrences: \n";
+  cout << "  - For replacing some/some occurrences: \n";
   cout << "       => rex [directory path('.' or 'full path')] --replace [word "
           "or sentence to be replaced] [word or sentence to be replaced with] "
-          "--all(for the whole directory)/--some [filePath1] [filePath2] ... "
+          "--some(for the whole directory)/--some [filePath1] [filePath2] ... "
           "\n\n";
-  cout << "  - For reverting the changes made by the replace operation: \n";
-  cout << "       => rex [directory path('.' or 'full path')] --revert [unique "
-          "code appended after '.' in the log file] \n\n";
-  cout << "\n Terminologies(actual precedence order): \n";
+  cout << "\n Flags(actual precedence order): \n";
   cout << "   --find      operation specification flag, used to find code "
           "snippets in the current working directory. \n";
   cout << "   --replace   operation specification flag, used to replace code "
           "snippets with the provided ones in the current working directory.\n";
-  cout << "   --revert    operation specification flag, used to revert the "
-          "changes made by the replacement operation.\n";
   cout << "   --list     if multiple words are to be found, present this flag "
-          "and pass the keywords in a listing fashing.\n";
-  cout << "   --all       flag for considering every file in the current "
-          "working directory.\n";
+          "and pass the keywords in a listing fashion.\n";
+  cout << "   --some       flag for considering every file in the current "
+          "working directory(default).\n";
   cout << "   --some      flag for considering some selected few files in the "
           "current working directory.\n";
+  cout << "   --lines     flag for displaying more than one line in the result "
+          "output[just provide the integer after it].\n";
   cout << "   --include-only     flag for only considering certain file"
           "types(specify file types only without a period).\n";
   cout << "   --except     flag for excluding certain file types(specify file "
           "types only without a period).\n";
-  cout << "\n\n WARNING: \n";
-  cout
-      << "     '--revert' will only work if the files in which the changes via "
-         "the replacement operation were made haven't changed.\n\n";
+  cout << "\n NOTE: Currently only these file types are supported: c, cpp, js, "
+          "mjs, ts, java, py, txt.\n";
   cout << "\n TIP: \n     * Just append '--display' flag at the end of your "
-       << "command to display the operation details.\n     * To perform any "
+       << "command to display the operation details(in the case of replace "
+          "operation).\n     * To perform any "
           "operation "
        << "on a certain file type, consider using '--include-only' flag, just"
-       << "add it as a suffix to the whole command,"
-       << "like so : [whole command]-- include -"
+       << " add it as a suffix to the whole command,"
+       << "like so : [whole command] --include-"
        << "only cpp java py...\n     * To exclude any file(s) from the "
           "operation "
           "being performed,"
        << "just add the flag '--except' and the file types, like "
-          "so[whole "
-          "command]-- except cpp java py... \n"
-       << "     * By default the operation scope would be '--all', unless "
+          "so: [whole "
+          "command] --except cpp java py... \n"
+       << "     * By default the operation scope would be '--some', unless "
           "specified "
           "otherwise.\n\n";
 }
 
-REX::REX(char *arguments[], int const &size) {
+REX::REX(char *arguments[], int const &size) : currentOperation() {
+  this->parse(arguments, size);
+  if (this->currentOperation.get_operationtype() == operation_type::replace) {
+    // promptLogPathLocation(this->currentOperation);
+  }
+}
+
+void REX::run() {
   this->start = std::chrono::steady_clock::now();
-  this->cur_op = operation();
-  this->_parse(arguments, size);
-  this->_register(this->cur_op.getFilePath());
-  this->_initiate_operation();
+  this->_register(this->currentOperation.getFilePath());
+  this->initiateOperation();
   this->end = std::chrono::steady_clock::now();
   cout << "\nThe operation took: " << this->getElapsedTime() << "ms\n";
 }
@@ -104,7 +111,7 @@ int REX::getElapsedTime() {
       .count();
 }
 
-void REX::_parse(char *arguments[], int const &size) {
+void REX::parse(char *arguments[], int const &size) {
   string path, target, replacer, rest;
   operation_type op_type;
   operation_scope op_scope;
@@ -114,7 +121,7 @@ void REX::_parse(char *arguments[], int const &size) {
   bool is_target_provided = false;
   if (string(arguments[1]).compare("--revert") == 0) {
     op_type = operation_type::revert;
-    op_scope = operation_scope::all;
+    op_scope = operation_scope::some;
     target = arguments[2];
     goto done;
   }
@@ -149,11 +156,11 @@ void REX::_parse(char *arguments[], int const &size) {
           target += string(arguments[j++]) + '\n';
         }
         i = j - 1;
-        op_scope = operation_scope::all;
+        op_scope = operation_scope::some;
         break;
       }
       target = argument;
-      op_scope = operation_scope::all;
+      op_scope = operation_scope::some;
       if (op_type == operation_type::replace) {
         if (i + 1 >= size)
           throw runtime_error(
@@ -163,14 +170,14 @@ void REX::_parse(char *arguments[], int const &size) {
       break;
     }
     case 4: {
-      if (argument == "--all") {
-        op_scope = operation_scope::all;
+      if (argument == "--some") {
+        op_scope = operation_scope::some;
       } else if (argument == "--some") {
         op_scope = operation_scope::some;
       } else {
-        if (op_scope == operation_scope::all && argument == "--include-only" ||
+        if (op_scope == operation_scope::some && argument == "--include-only" ||
             argument == "--except" || argument == "--lines") {
-          goto default_;
+          goto DEFAULT;
         }
         throw runtime_error("Unknown operation scope: " + argument +
                             " [error while parsing arguments]");
@@ -197,7 +204,7 @@ void REX::_parse(char *arguments[], int const &size) {
       }
     }
     default: {
-    default_:
+    DEFAULT:
       if (argument == "--lines") {
         lines = atoi(arguments[++i]);
         break;
@@ -224,17 +231,17 @@ done:
       throw runtime_error("Missing files! [error while parsing arguments]");
     }
   }
-  this->cur_op.reinitialize(path, target, op_type, op_scope, lines, rest,
-                            replacer, special_files);
+  this->currentOperation.reinitialize(path, target, op_type, op_scope, lines,
+                                      rest, replacer, special_files);
 }
 
 void REX::_register(std::string const &filepath) {
-  if (this->cur_op.get_operationtype() == operation_type::revert) {
+  if (this->currentOperation.get_operationtype() == operation_type::revert) {
     return;
   }
   unordered_map<string, operation_target> targetFiles;
   bool includeOnly = false;
-  for (auto const &f_type : this->cur_op.get_specialfiles()) {
+  for (auto const &f_type : this->currentOperation.get_specialfiles()) {
     includeOnly |= f_type.second == operation_target::includeOnly;
     targetFiles[f_type.first] = f_type.second;
   }
@@ -246,6 +253,7 @@ void REX::_register(std::string const &filepath) {
     string fpath = file.path();
     string type = utility::getfiletype(fpath);
     if (!(type == "cpp" || type == "c" || type == "java" || type == "py" ||
+          type == "js" || type == "ts" || type == "mjs" ||
           type == "txt")) { // FIXME: Extend the file types...!
       continue;
     }
@@ -263,18 +271,18 @@ void REX::_register(std::string const &filepath) {
   }
 }
 
-void REX::_initiate_operation() {
-  switch (this->cur_op.get_operationtype()) {
+void REX::initiateOperation() {
+  switch (this->currentOperation.get_operationtype()) {
   case operation_type::find: {
-    this->_find();
+    this->find();
     break;
   }
   case operation_type::replace: {
-    this->_replace();
+    this->replace();
     break;
   }
   case operation_type::revert: {
-    this->_revert();
+    this->revert();
     break;
   }
   default:
@@ -282,18 +290,19 @@ void REX::_initiate_operation() {
   }
 }
 
-void REX::_find() { // TODO: Consider using threads to make this cli a
-                    // non-blocking one.
-  const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
+void REX::find() { // TODO: Consider using threads to make this cli a
+                   // non-blocking one.
+  const auto [target, replacer] =
+      this->currentOperation.get_targetAndreplacer();
   auto print_results = [&](string const &target) -> void {
     cout << "Total match found: "
          << double(double(this->found_results.size()) + 0.0) << "\n";
     for (auto &result : this->found_results) {
-      cout << (this->cur_op.getlines() == 0 ? "" : "\n -----\n");
+      cout << (this->currentOperation.getlines() == 0 ? "" : "\n -----\n");
       cout << "\nfile: " << result.first << ",\n";
       vector<string> results_ = utility::split(result.second.second + '\n');
       for (int i = 0; i < results_.size(); i++) {
-        if (i == this->cur_op.getlines()) {
+        if (i == this->currentOperation.getlines()) {
           cout << "At line no. " << result.second.first + 1
                << ": " /* TODO: You could add another option to avoid colorising
                       the results, which might lead to performance being
@@ -303,13 +312,13 @@ void REX::_find() { // TODO: Consider using threads to make this cli a
           cout << "                " << results_[i] << "\n";
         }
       }
-      cout << (this->cur_op.getlines() == 0 ? "" : "\n xxxxx \n");
+      cout << (this->currentOperation.getlines() == 0 ? "" : "\n xxxxx \n");
     }
   };
-  switch (this->cur_op.get_operationscope()) {
-  case operation_scope::all: {
+  switch (this->currentOperation.get_operationscope()) {
+  case operation_scope::some: {
     for (auto &code : this->file_instances) {
-      for (auto result : code.find(target, this->cur_op.getlines())) {
+      for (auto result : code.find(target, this->currentOperation.getlines())) {
         this->found_results.push_back({code.getpath(), result});
       }
     }
@@ -336,8 +345,9 @@ void REX::_find() { // TODO: Consider using threads to make this cli a
   }
 }
 
-void REX::_replace() {
-  const auto [target, replacer] = this->cur_op.get_targetAndreplacer();
+void REX::replace() {
+  const auto [target, replacer] =
+      this->currentOperation.get_targetAndreplacer();
   vector<pair<string, pair<int, pair<string, string>>>> results_;
   if (target == replacer) {
     cout << "target and replacer are same... Haulting execution...!\n";
@@ -363,14 +373,17 @@ void REX::_replace() {
       log_data += "To: " + result_.second.second.second + "\n###\n";
     }
     if (!results_.empty()) {
-      utility::save_log(log_data, target, replacer);
+      utility::save_log(log_data, target, replacer,
+                        this->currentOperation.logFilePath);
     }
   };
   for (auto &code : this->file_instances) {
     for (auto const &result : code.replace(target, replacer)) {
       if ((this->filepaths.find(code.getpath()) != this->filepaths.end() &&
-           this->cur_op.get_operationscope() == operation_scope::some) ||
-          this->cur_op.get_operationscope() == operation_scope::all) {
+           this->currentOperation.get_operationscope() ==
+               operation_scope::some) ||
+          this->currentOperation.get_operationscope() ==
+              operation_scope::some) {
         results_.push_back({code.getpath(), result});
       }
     }
@@ -378,9 +391,9 @@ void REX::_replace() {
   print_results();
 }
 
-void REX::_revert() {
+void REX::revert() {
   unordered_map<string, vector<pair<string, string>>> files_;
-  code_helper logFile(this->cur_op.get_targetAndreplacer().first);
+  code_helper logFile(this->currentOperation.get_targetAndreplacer().first);
   string prev;
   for (auto const &code : logFile.getcode()) {
     if (code.compare("###") == 0) {
@@ -438,7 +451,7 @@ void REX::_revert() {
     }
     code_file.revert();
   }
-  remove(this->cur_op.get_targetAndreplacer()
+  remove(this->currentOperation.get_targetAndreplacer()
              .first); // Removing the logFile so, that it could not be used any
                       // further...
 }
@@ -451,6 +464,7 @@ int main(int argc, char *argv[]) {
   }
   try {
     REX instance(argv, argc);
+    instance.run();
   } catch (std::exception &e) {
     cout << "\nERROR: " << e.what() << "\n\n";
     REX::printUsage();
